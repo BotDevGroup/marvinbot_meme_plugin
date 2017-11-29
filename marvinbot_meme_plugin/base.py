@@ -122,9 +122,11 @@ class MarvinBotMemePlugin(Plugin):
         if message.reply_to_message and message.reply_to_message.photo:
             photo = message.reply_to_message.photo
             msg = ""
+            out = None
 
             try:
-                file = self.adapter.bot.getFile(file_id=photo[2]['file_id'])
+                f_id = photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
+                file = self.adapter.bot.getFile(file_id=f_id)
         
                 # Download image
                 out = BytesIO()
@@ -134,30 +136,31 @@ class MarvinBotMemePlugin(Plugin):
             except Exception as err:
                 log.error("Meme - get photo error: {}".format(err))
                 msg = "❌ Meme error: {}".format(err)
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
 
-            try:
-                # Make meme
-                img = BytesIO()
-                img.seek(0)
-
-                if top:
-                    img = self.make_meme(image=out, text=top, size=size)
+            if out is not None:
+                try:
+                    # Make meme
+                    img = BytesIO()
                     img.seek(0)
-                    if bottom:
-                        img = self.make_meme(image=img, text=bottom, size=size, top=False)
-                elif bottom and not top:
-                    img = self.make_meme(image=out, text=bottom, size=size, top=False)
-                elif not top and not bottom:
-                    img = self.make_meme(image=out, text=text, size=size)
 
-                img.seek(0)
-                self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img) 
-            except Exception as err:
-                log.error("Meme - make error: {}".format(err))
-                msg = "❌ Meme error: {}".format(err)
+                    if top:
+                        img = self.make_meme(image=out, text=top, size=size)
+                        img.seek(0)
+                        if bottom:
+                            img = self.make_meme(image=img, text=bottom, size=size, top=False)
+                    elif bottom and not top:
+                        img = self.make_meme(image=out, text=bottom, size=size, top=False)
+                    elif not top and not bottom:
+                        img = self.make_meme(image=out, text=text, size=size)
 
-            if msg:
-                self.adapter.bot.sendMessage(chat_id=query.message.chat_id, text=msg, parse_mode='Markdown')
+                    img.seek(0)
+                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img) 
+                except Exception as err:
+                    log.error("Meme - make error: {}".format(err))
+                    msg += "❌ Meme error: {}".format(err)
+                    self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+
         else:
             msg = "❌ errr!!! where is the photo?"
             self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg)
