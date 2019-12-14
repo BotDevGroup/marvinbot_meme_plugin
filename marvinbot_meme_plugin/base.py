@@ -46,7 +46,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--size', help='Font Size, default 62')
             .add_argument('--top', help='Top text')
             .add_argument('--bottom', help='Bottom text')
-            .add_argument('--modern', help='Meme Modern', action='store_true')
+            .add_argument('--modern', help='Modern Layout', action='store_true')
         )
 
     def setup_schedules(self, adapter):
