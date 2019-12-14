@@ -19,6 +19,7 @@ from PIL import ImageDraw
 
 import os
 import inspect
+import sys, traceback
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +46,32 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--size', help='Font Size, default 62')
             .add_argument('--top', help='Top text')
             .add_argument('--bottom', help='Bottom text')
+            .add_argument('--modern', help='Meme Modern', action='store_true')
         )
- 
+
     def setup_schedules(self, adapter):
         pass
+
+    def make_meme_modern(self, image, text, size=32):
+        if size is None:
+            size = 32
+
+        font = ImageFont.truetype("{}/Arial.ttf".format(self.path), int(size))
+        original = Image.open(image)
+        draw = ImageDraw.Draw(original)
+
+        imageW, imageH = original.size
+        charW, charH = draw.textsize(text[0], font)
+        max_char = int(imageW / charW)
+
+        text = "\n".join(textwrap.wrap(text, width=max_char))
+
+        draw.multiline_text((10, 5), text, font=font, fill='black', align='left')
+
+        img = BytesIO()
+        img.seek(0)
+        original.save(img, format='PNG')
+        return img
 
     def make_meme(self, image, text, size=62, top=True):
         text = text.upper()
@@ -58,7 +81,7 @@ class MarvinBotMemePlugin(Plugin):
 
         shadowcolor = "black"
         fillcolor = "white"
-        
+
         font = ImageFont.truetype("{}/impact.ttf".format(self.path), int(size))
         original = Image.open(image)
         draw = ImageDraw.Draw(original)
@@ -97,6 +120,7 @@ class MarvinBotMemePlugin(Plugin):
         size = kwargs.get('size')
         top = ""
         bottom = ""
+        modern = kwargs.get('modern')
 
         text = " ".join(message.text.split(" ")[1:])
 
@@ -119,6 +143,9 @@ class MarvinBotMemePlugin(Plugin):
             top = list_text[0]
             bottom = list_text[1]
 
+        if "—modern" in text:
+            text = text.replace("—modern ","")
+
         if message.reply_to_message and message.reply_to_message.photo:
             photo = message.reply_to_message.photo
             msg = ""
@@ -127,7 +154,7 @@ class MarvinBotMemePlugin(Plugin):
             try:
                 f_id = photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
                 file = self.adapter.bot.getFile(file_id=f_id)
-        
+
                 # Download image
                 out = BytesIO()
                 out.seek(0)
@@ -144,7 +171,9 @@ class MarvinBotMemePlugin(Plugin):
                     img = BytesIO()
                     img.seek(0)
 
-                    if top:
+                    if modern:
+                        img = self.make_meme_modern(image=out, text=text, size=size)
+                    elif top:
                         img = self.make_meme(image=out, text=top, size=size)
                         img.seek(0)
                         if bottom:
@@ -155,11 +184,12 @@ class MarvinBotMemePlugin(Plugin):
                         img = self.make_meme(image=out, text=text, size=size)
 
                     img.seek(0)
-                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img) 
+                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img)
                 except Exception as err:
                     log.error("Meme - make error: {}".format(err))
                     msg += "❌ Meme error: {}".format(err)
                     self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                    traceback.print_exc(file=sys.stdout)
 
         else:
             msg = "❌ errr!!! where is the photo?"
