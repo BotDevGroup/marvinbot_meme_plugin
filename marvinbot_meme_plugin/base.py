@@ -52,6 +52,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--modern', help='Modern Layout', action='store_true')
             .add_argument('--save', help='Save Template', action='store_true')
             .add_argument('--remove', help='Remove Template', action='store_true')
+            .add_argument('--list', help='List Templates', action='store_true')
         )
 
     def setup_schedules(self, adapter):
