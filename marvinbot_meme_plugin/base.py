@@ -21,6 +21,8 @@ import os
 import inspect
 import sys, traceback
 
+from marvinbot_meme_plugin.models import MemeTemplate
+
 log = logging.getLogger(__name__)
 
 
@@ -33,7 +35,8 @@ class MarvinBotMemePlugin(Plugin):
     def get_default_config(self):
         return {
             'short_name': self.name,
-            'enabled': True
+            'enabled': True,
+            'limit': 4
         }
 
     def configure(self, config):
@@ -47,6 +50,8 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--top', help='Top text')
             .add_argument('--bottom', help='Bottom text')
             .add_argument('--modern', help='Modern Layout', action='store_true')
+            .add_argument('--save', help='Save Template', action='store_true')
+            .add_argument('--remove', help='Remove Template', action='store_true')
         )
 
     def setup_schedules(self, adapter):
@@ -146,13 +151,51 @@ class MarvinBotMemePlugin(Plugin):
         if "—modern" in text:
             text = text.replace("—modern ","")
 
+        if "—list" in text:
+            memetemplates = MemeTemplate.objects(chat_id = message.chat.id)
+            for meme in memetemplates:
+                self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=meme.photo_id)
+            if not memetemplates:
+                msg = "⚠ Not template saved."
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+            return
+
         if message.reply_to_message and message.reply_to_message.photo:
             photo = message.reply_to_message.photo
+            f_id = photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
             msg = ""
             out = None
 
+            if "—save" in text:
+                if MemeTemplate.objects(chat_id = message.chat.id).count() >= self.config.get("limit"):
+                    msg = "⚠ Templates are in the limit. You need to delete one."
+                elif MemeTemplate.by_chatid_photoid(message.chat.id, f_id):
+                    msg = "⚠ I really have this one."
+                else:
+                    fields = {
+                        'chat_id' : message.chat.id,
+                        'user_id' : message.from_user.id,
+                        'photo_id' : f_id
+                    }
+
+                    if self.add_template(**fields):
+                        msg = "💾 Template saved."
+                    else:
+                        msg = "❌ Template saved error."
+
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                return
+
+            if "—remove" in text:
+                if self.remove_template(message.chat.id, f_id):
+                    msg = "🗑 Template removed."
+                else:
+                    msg = "❌ Template remove error."
+
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                return
+
             try:
-                f_id = photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
                 file = self.adapter.bot.getFile(file_id=f_id)
 
                 # Download image
@@ -194,3 +237,26 @@ class MarvinBotMemePlugin(Plugin):
         else:
             msg = "❌ errr!!! where is the photo?"
             self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg)
+
+    @staticmethod
+    def add_template(**kwargs):
+        try:
+            memetemplate = MemeTemplate(**kwargs)
+            memetemplate.save()
+            return True
+        except Exception as err:
+            log.error("Meme - save error: {}".format(ex))
+            traceback.print_exc(file=sys.stdout)
+            return False
+
+    @staticmethod
+    def remove_template(chat_id, photo_id):
+        try:
+            memetemplate = MemeTemplate.by_chatid_photoid(chat_id, photo_id)
+            if memetemplate:
+                memetemplate.delete()
+            return True
+        except Exception as err:
+            log.error("Meme - remove error: {}".format(ex))
+            traceback.print_exc(file=sys.stdout)
+            return False
