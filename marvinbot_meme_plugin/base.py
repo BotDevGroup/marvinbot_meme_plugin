@@ -156,7 +156,7 @@ class MarvinBotMemePlugin(Plugin):
             text = text.replace("—modern ","")
 
         if "—save" in text or "—remove" in text:
-            name_re = re.compile(".*—(save|remove)\s([ a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)(\s—.*|$)")
+            name_re = re.compile(".*—(save|remove)\s([a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)(\s|$)")
             try:
                 name = name_re.search(text).group(2)
             except:
