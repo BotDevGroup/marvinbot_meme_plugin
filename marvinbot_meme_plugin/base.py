@@ -52,7 +52,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--modern', help='Modern Layout', action='store_true')
             .add_argument('--save', help='Save Template', action='store_true')
             .add_argument('--remove', help='Remove Template', action='store_true')
-            .add_argument('--list', help='List Templates', action='store_true')
+            .add_argument('--list', help='Template List', action='store_true')
         )
 
     def setup_schedules(self, adapter):
@@ -121,6 +121,9 @@ class MarvinBotMemePlugin(Plugin):
         return img
 
     def on_meme_command(self, update, *args, **kwargs):
+        def get_photo_id(photo):
+            return photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
+
         message = get_message(update)
 
         size = kwargs.get('size')
@@ -152,49 +155,64 @@ class MarvinBotMemePlugin(Plugin):
         if "—modern" in text:
             text = text.replace("—modern ","")
 
+        if "—save" in text or "—remove" in text:
+            name_re = re.compile(".*—(save|remove)\s([ a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)(\s—.*|$)")
+            try:
+                name = name_re.search(text).group(2)
+            except:
+                name = None
+                pass
+
         if "—list" in text:
             memetemplates = MemeTemplate.objects(chat_id = message.chat.id)
             for meme in memetemplates:
-                self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=meme.photo_id)
+                self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=meme.photo_id, caption=meme.name)
             if not memetemplates:
-                msg = "⚠ Not template saved."
+                msg = "⚠ Template not saved."
                 self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
             return
 
+        if "—remove" in text:
+            if message.reply_to_message and message.reply_to_message.photo:
+                f_id = get_photo_id(message.reply_to_message.photo)
+
+            if self.remove_template(chat_id = message.chat.id, name = name, photo_id = f_id):
+                msg = "🗑 Template removed."
+            else:
+                msg = "❌ Template remove error."
+
+            self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+            return
+
+        if "—save" in text and message.reply_to_message and message.reply_to_message.photo:
+            f_id = get_photo_id(message.reply_to_message.photo)
+            
+            if MemeTemplate.objects(chat_id = message.chat.id).count() >= self.config.get("limit"):
+                msg = "⚠ Templates are in the limit. You need to delete one."
+            elif MemeTemplate.by_chatid_photoid(message.chat.id, f_id):
+                msg = "⚠ I really have this one."
+            elif not name:
+                msg = "❌ You need to write a name for the template."
+            else:
+                fields = {
+                    'chat_id' : message.chat.id,
+                    'user_id' : message.from_user.id,
+                    'photo_id' : f_id,
+                    'name' : name
+                }
+
+                if self.add_template(**fields):
+                    msg = "💾 Template saved."
+                else:
+                    msg = "❌ Template saved error."
+
+            self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+            return
+
         if message.reply_to_message and message.reply_to_message.photo:
-            photo = message.reply_to_message.photo
-            f_id = photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
+            f_id = get_photo_id(message.reply_to_message.photo)
             msg = ""
             out = None
-
-            if "—save" in text:
-                if MemeTemplate.objects(chat_id = message.chat.id).count() >= self.config.get("limit"):
-                    msg = "⚠ Templates are in the limit. You need to delete one."
-                elif MemeTemplate.by_chatid_photoid(message.chat.id, f_id):
-                    msg = "⚠ I really have this one."
-                else:
-                    fields = {
-                        'chat_id' : message.chat.id,
-                        'user_id' : message.from_user.id,
-                        'photo_id' : f_id
-                    }
-
-                    if self.add_template(**fields):
-                        msg = "💾 Template saved."
-                    else:
-                        msg = "❌ Template saved error."
-
-                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
-                return
-
-            if "—remove" in text:
-                if self.remove_template(message.chat.id, f_id):
-                    msg = "🗑 Template removed."
-                else:
-                    msg = "❌ Template remove error."
-
-                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
-                return
 
             try:
                 file = self.adapter.bot.getFile(file_id=f_id)
@@ -246,18 +264,22 @@ class MarvinBotMemePlugin(Plugin):
             memetemplate.save()
             return True
         except Exception as err:
-            log.error("Meme - save error: {}".format(ex))
+            log.error("Meme - save error: {}".format(err))
             traceback.print_exc(file=sys.stdout)
             return False
 
     @staticmethod
-    def remove_template(chat_id, photo_id):
+    def remove_template(chat_id, photo_id = None, name = None):
         try:
-            memetemplate = MemeTemplate.by_chatid_photoid(chat_id, photo_id)
+            if photo_id:
+                memetemplate = MemeTemplate.by_chatid_photoid(chat_id, photo_id)
+            if name:
+                memetemplate = MemeTemplate.by_chatid_name(chat_id, name)
             if memetemplate:
                 memetemplate.delete()
-            return True
+                return True
+            return False
         except Exception as err:
-            log.error("Meme - remove error: {}".format(ex))
+            log.error("Meme - remove error: {}".format(err))
             traceback.print_exc(file=sys.stdout)
             return False
