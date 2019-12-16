@@ -173,6 +173,7 @@ class MarvinBotMemePlugin(Plugin):
             return
 
         if "—remove" in text:
+            f_id = None
             if message.reply_to_message and message.reply_to_message.photo:
                 f_id = get_photo_id(message.reply_to_message.photo)
 
@@ -186,7 +187,7 @@ class MarvinBotMemePlugin(Plugin):
 
         if "—save" in text and message.reply_to_message and message.reply_to_message.photo:
             f_id = get_photo_id(message.reply_to_message.photo)
-            
+
             if MemeTemplate.objects(chat_id = message.chat.id).count() >= self.config.get("limit"):
                 msg = "⚠ Templates are in the limit. You need to delete one."
             elif MemeTemplate.by_chatid_photoid(message.chat.id, f_id):
