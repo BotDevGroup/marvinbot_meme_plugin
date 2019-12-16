@@ -53,6 +53,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--save', help='Save Template', action='store_true')
             .add_argument('--remove', help='Remove Template', action='store_true')
             .add_argument('--list', help='Template List', action='store_true')
+            .add_argument('--template', help='Template')
         )
 
     def setup_schedules(self, adapter):
@@ -127,9 +128,9 @@ class MarvinBotMemePlugin(Plugin):
         message = get_message(update)
 
         size = kwargs.get('size')
+        modern = kwargs.get('modern')
         top = ""
         bottom = ""
-        modern = kwargs.get('modern')
 
         text = " ".join(message.text.split(" ")[1:])
 
@@ -210,8 +211,17 @@ class MarvinBotMemePlugin(Plugin):
             self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
             return
 
-        if message.reply_to_message and message.reply_to_message.photo:
-            f_id = get_photo_id(message.reply_to_message.photo)
+        photo_id = None
+        if "—template" in text:
+            template_re = re.compile(".*—template\s([a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)\s(.*)")
+            name = template_re.search(text).group(1)
+            text = template_re.search(text).group(2)
+            memetemplate = MemeTemplate.by_chatid_name(message.chat.id, name)
+            if memetemplate:
+                photo_id = memetemplate.photo_id
+
+        if (message.reply_to_message and message.reply_to_message.photo) or photo_id:
+            f_id = photo_id if photo_id else get_photo_id(message.reply_to_message.photo)
             msg = ""
             out = None
 
