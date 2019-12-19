@@ -166,11 +166,14 @@ class MarvinBotMemePlugin(Plugin):
 
         if "—list" in text:
             memetemplates = MemeTemplate.objects(chat_id = message.chat.id)
-            for meme in memetemplates:
-                self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=meme.photo_id, caption=meme.name)
+            if memetemplates:
+                msg = "Templates 📷:\n\n"
+                msg += "\n".join([meme.name for meme in memetemplates])
+
             if not memetemplates:
                 msg = "⚠ Template not saved."
-                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+
+            self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
             return
 
         if "—remove" in text:
@@ -217,7 +220,7 @@ class MarvinBotMemePlugin(Plugin):
             name = template_re.search(text).group(1)
             text = template_re.search(text).group(2)
             if top:
-                top = template_re.search(top).group(2) 
+                top = template_re.search(top).group(2)
             memetemplate = MemeTemplate.by_chatid_name(message.chat.id, name)
             if memetemplate:
                 photo_id = memetemplate.photo_id
