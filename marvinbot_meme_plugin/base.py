@@ -216,6 +216,8 @@ class MarvinBotMemePlugin(Plugin):
             template_re = re.compile(".*—template\s([a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)\s(.*)")
             name = template_re.search(text).group(1)
             text = template_re.search(text).group(2)
+            if top:
+                top = template_re.search(top).group(2) 
             memetemplate = MemeTemplate.by_chatid_name(message.chat.id, name)
             if memetemplate:
                 photo_id = memetemplate.photo_id
