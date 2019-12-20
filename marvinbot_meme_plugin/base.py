@@ -167,7 +167,7 @@ class MarvinBotMemePlugin(Plugin):
         if "—list" in text:
             memetemplates = MemeTemplate.objects(chat_id = message.chat.id)
             if memetemplates:
-                msg = "Templates 📷:\n\n"
+                msg = "Templates 📷\n\n"
                 msg += "\n".join([meme.name for meme in memetemplates])
 
             if not memetemplates:
@@ -219,9 +219,16 @@ class MarvinBotMemePlugin(Plugin):
 
         photo_id = None
         if "—template" in text:
+            if message.reply_to_message:
+                text +=  " {}".format(message.reply_to_message.text)
             template_re = re.compile(".*—template\s([a-zA-Z0-9\._-¡¿!?\(\)\'\"]*)\s(.*)")
-            name = template_re.search(text).group(1)
-            text = template_re.search(text).group(2)
+            try:
+                name = template_re.search(text).group(1)
+                text = template_re.search(text).group(2)
+            except:
+                msg = "❌ Template message error."
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                return
             if top:
                 top = template_re.search(top).group(2)
             memetemplate = MemeTemplate.by_chatid_name(message.chat.id, name)
