@@ -6,7 +6,7 @@ class MemeTemplate(mongoengine.Document):
     user_id = mongoengine.LongField(required = True)
     photo_id = mongoengine.StringField(required = True)
     name = mongoengine.StringField(required = True)
-
+    type = mongoengine.StringField(required = False)
     date_added = mongoengine.DateTimeField(default = localized_date)
 
     @classmethod

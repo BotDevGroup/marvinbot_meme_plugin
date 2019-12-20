@@ -206,6 +206,9 @@ class MarvinBotMemePlugin(Plugin):
                     'name' : name
                 }
 
+                if "—modern" in text:
+                    fields['type'] = "modern"
+
                 if self.add_template(**fields):
                     msg = "💾 Template saved."
                 else:
@@ -224,6 +227,7 @@ class MarvinBotMemePlugin(Plugin):
             memetemplate = MemeTemplate.by_chatid_name(message.chat.id, name)
             if memetemplate:
                 photo_id = memetemplate.photo_id
+                modern = True if memetemplate.type else False
 
         if (message.reply_to_message and message.reply_to_message.photo) or photo_id:
             f_id = photo_id if photo_id else get_photo_id(message.reply_to_message.photo)
