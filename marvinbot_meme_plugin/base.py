@@ -167,7 +167,7 @@ class MarvinBotMemePlugin(Plugin):
         if "—list" in text:
             memetemplates = MemeTemplate.objects(chat_id = message.chat.id)
             if memetemplates:
-                msg = "Templates 📷\n\n"
+                msg = "📷 Templates\n\n"
                 msg += "\n".join([meme.name for meme in memetemplates])
 
             if not memetemplates:
