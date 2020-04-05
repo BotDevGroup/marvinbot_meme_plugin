@@ -55,6 +55,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--list', help='Template List', action='store_true')
             .add_argument('--template', help='Template')
         )
+        self.add_handler(CommandHandler('frame', self.on_frame_command, command_description='Frame photo'))
 
     def setup_schedules(self, adapter):
         pass
@@ -310,3 +311,55 @@ class MarvinBotMemePlugin(Plugin):
             log.error("Meme - remove error: {}".format(err))
             traceback.print_exc(file=sys.stdout)
             return False
+
+    def on_frame_command(self, update, *args, **kwargs):
+        def get_photo_id(photo):
+            return photo[1]['file_id'] if len(photo) < 3 else photo[2]['file_id']
+
+        message = get_message(update)
+
+        if message.reply_to_message and message.reply_to_message.photo:
+            f_id = get_photo_id(message.reply_to_message.photo)
+            msg = ""
+            out = None
+
+            try:
+                file = self.adapter.bot.getFile(file_id=f_id)
+
+                out = BytesIO()
+                out.seek(0)
+                file.download(out=out)
+                out.seek(0)
+            except Exception as err:
+                log.error("Frame - get photo error: {}".format(err))
+                msg = "❌ Frame error: {}".format(err)
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+
+            if out is not None:
+                try:
+                    img = BytesIO()
+                    img.seek(0)
+
+                    original = Image.open(out)
+                    ori_w, ori_h = original.size
+                    resize = (ori_w+400, ori_h+400)
+
+                    frame = Image.open("{}/frame.png".format(self.path))
+                    frame = frame.resize(resize)
+                    fra_w, fra_h = frame.size
+
+                    offset = ((fra_w - ori_w) // 2, (fra_h - ori_h) // 2)
+                    frame.paste(original, offset)
+
+                    frame.save(img, format='PNG')
+
+                    img.seek(0)
+                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img)
+                except Exception as err:
+                    log.error("Frame - make error: {}".format(err))
+                    msg += "❌ Frame error: {}".format(err)
+                    self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                    traceback.print_exc(file=sys.stdout)
+        else:
+            msg = "❌ errr!!! where is the photo?"
+            self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg)
