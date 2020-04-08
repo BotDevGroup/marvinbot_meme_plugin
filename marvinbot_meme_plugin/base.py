@@ -422,8 +422,7 @@ class MarvinBotMemePlugin(Plugin):
             except Exception as err:
                 log.error("Dance - make error: {}".format(err))
                 msg = "❌ Dance error: {}".format(err)
-                if "Timed out" not in err:
-                    self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
                 traceback.print_exc(file=sys.stdout)
         else:
             msg = "❌ errr!!! where is the video?"
