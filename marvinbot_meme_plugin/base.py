@@ -402,15 +402,22 @@ class MarvinBotMemePlugin(Plugin):
                 dance = ffmpeg.input("{}/dance.mp4".format(self.path), ss = start)
                 kargs = {"enable":"between(t,0,{})".format(duration)}
                 audio1 = dance.audio.filter('volume', '0.2', **kargs)
-                audio2 = ffmpeg.input(url).audio.filter('volume','0.8')
+                audio2 = ffmpeg.input(url).audio
                 audio = ffmpeg.filter([audio2, audio1], 'amix')
-                video, _ = (
-                    dance
-                        .overlay(overlay, eof_action = "pass")
-                        .output(audio, 'pipe:', movflags = "frag_keyframe+empty_moov", format = 'mp4', acodec='mp3', ac = 1)
-                        .run(capture_stdout = True, quiet = True)
-                )
-
+                try:
+                    video, _ = (
+                        dance
+                            .overlay(overlay, eof_action = "pass")
+                            .output(audio, 'pipe:', movflags = "frag_keyframe+empty_moov", format = 'mp4', acodec='mp3', ac = 1)
+                            .run(capture_stdout = True, quiet = True)
+                        )
+                except:
+                    video, _ = (
+                        dance
+                            .overlay(overlay, eof_action = "pass")
+                            .output(audio1, 'pipe:', movflags = "frag_keyframe+empty_moov", format = 'mp4', acodec='mp3', ac = 1)
+                            .run(capture_stdout = True, quiet = True)
+                        )
                 self.adapter.bot.sendVideo(chat_id=message.chat_id, video=BytesIO(video))
             except Exception as err:
                 log.error("Dance - make error: {}".format(err))
