@@ -4,7 +4,7 @@ from setuptools import find_packages
 # apt-get install libtiff5-dev libjpeg-dev zlib1g-dev libfreetype6-dev
 
 REQUIREMENTS = [
-    'marvinbot','pillow'
+    'marvinbot','pillow','ffmpeg-python'
 ]
 
 setup(name='marvinbot-meme-plugin',

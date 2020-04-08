@@ -11,7 +11,7 @@ import time
 import re
 import textwrap
 
-from io import BytesIO
+from io import BytesIO, RawIOBase
 
 from PIL import Image
 from PIL import ImageFont
@@ -56,6 +56,7 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--template', help='Template')
         )
         self.add_handler(CommandHandler('frame', self.on_frame_command, command_description='Frame photo'))
+        self.add_handler(CommandHandler('funeral', self.on_funeral_command, command_description='Coffin Dance Meme'))
 
     def setup_schedules(self, adapter):
         pass
@@ -362,4 +363,61 @@ class MarvinBotMemePlugin(Plugin):
                     traceback.print_exc(file=sys.stdout)
         else:
             msg = "❌ errr!!! where is the photo?"
+            self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg)
+
+    def on_funeral_command(self, update, *args, **kwargs):
+        def getFileUrl(file_id, token):
+            import requests
+            url = "https://api.telegram.org/bot{}/getFile?file_id={}".format(token, file_id)
+            r = requests.get(url)
+            j = r.json()
+            return "https://api.telegram.org/file/bot{}/{}".format(token, j["result"]["file_path"])
+
+        message = get_message(update)
+
+        if message.reply_to_message and message.reply_to_message.video:
+            url = ""
+            out = None
+
+            try:
+                import ffmpeg
+
+                duration = int(message.reply_to_message.video.duration)
+                if duration > 19:
+                    msg = "❌ Do you try to make a movie or meme? (19 seconds the limit of video)"
+                    self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                    return
+                start = 19 - duration
+                url = getFileUrl(message.reply_to_message.video.file_id, self.adapter.config.get("telegram_token"))
+
+                resize = (
+                    ffmpeg.input(url)
+                        .filter('scale', size = '720:480', force_original_aspect_ratio = 'decrease')
+                )
+                overlay = (
+                     ffmpeg.input(url)
+                        .filter('scale', size = '720:480').filter('setsar','1').filter('boxblur','20')
+                        .overlay(resize, x = "(W-w)/2")
+                )
+                dance = ffmpeg.input("{}/dance.mp4".format(self.path), ss = start)
+                kargs = {"enable":"between(t,0,{})".format(duration)}
+                audio1 = dance.audio.filter('volume', '0.2', **kargs)
+                audio2 = ffmpeg.input(url).audio.filter('volume','0.8')
+                audio = ffmpeg.filter([audio2, audio1], 'amix')
+                video, _ = (
+                    dance
+                        .overlay(overlay, eof_action = "pass")
+                        .output(audio, 'pipe:', movflags = "frag_keyframe+empty_moov", format = 'mp4', acodec='mp3', ac = 1)
+                        .run(capture_stdout = True, quiet = True)
+                )
+
+                self.adapter.bot.sendVideo(chat_id=message.chat_id, video=BytesIO(video))
+            except Exception as err:
+                log.error("Dance - make error: {}".format(err))
+                msg = "❌ Dance error: {}".format(err)
+                if "Timed out" not in err:
+                    self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
+                traceback.print_exc(file=sys.stdout)
+        else:
+            msg = "❌ errr!!! where is the video?"
             self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg)
