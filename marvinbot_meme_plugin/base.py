@@ -56,7 +56,9 @@ class MarvinBotMemePlugin(Plugin):
             .add_argument('--template', help='Template')
         )
         self.add_handler(CommandHandler('frame', self.on_frame_command, command_description='Frame photo'))
-        self.add_handler(CommandHandler('funeral', self.on_funeral_command, command_description='Coffin Dance Meme'))
+        self.add_handler(CommandHandler('funeral', self.on_funeral_command, command_description='Coffin Dance Meme')
+            .add_argument('--jesus', help='Jesus Dance', action='store_true')
+        )
 
     def setup_schedules(self, adapter):
         pass
@@ -375,6 +377,8 @@ class MarvinBotMemePlugin(Plugin):
 
         message = get_message(update)
 
+        name = "jesus" if kwargs.get('jesus') else "dance"
+
         if message.reply_to_message and message.reply_to_message.video:
             url = ""
             out = None
@@ -399,10 +403,10 @@ class MarvinBotMemePlugin(Plugin):
                         .filter('scale', size = '720:480').filter('setsar','1').filter('boxblur','20')
                         .overlay(resize, x = "(W-w)/2")
                 )
-                dance = ffmpeg.input("{}/dance.mp4".format(self.path), ss = start)
+                dance = ffmpeg.input("{}/{}.mp4".format(self.path, name), ss = start)
                 kargs = {"enable":"between(t,0,{})".format(duration)}
                 audio1 = dance.audio.filter('volume', '0.4', **kargs)
-                audio2 = ffmpeg.input(url).audio.filter('volume', '0.5')
+                audio2 = ffmpeg.input(url).audio.filter('volume', '1')
                 audio = ffmpeg.filter([audio2, audio1], 'amix')
                 try:
                     video, _ = (
