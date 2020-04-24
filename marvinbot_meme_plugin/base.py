@@ -58,6 +58,7 @@ class MarvinBotMemePlugin(Plugin):
         self.add_handler(CommandHandler('frame', self.on_frame_command, command_description='Frame photo'))
         self.add_handler(CommandHandler('funeral', self.on_funeral_command, command_description='Coffin Dance Meme')
             .add_argument('--jesus', help='Jesus Dance', action='store_true')
+            .add_argument('--to', help='Record or transcode stop time')
         )
 
     def setup_schedules(self, adapter):
@@ -386,7 +387,8 @@ class MarvinBotMemePlugin(Plugin):
             try:
                 import ffmpeg
 
-                duration = int(message.reply_to_message.video.duration)
+                to = int(kwargs.get('to')) if kwargs.get('to') else int(message.reply_to_message.video.duration)
+                duration = to
                 if duration > 19:
                     msg = "❌ Do you try to make a movie or meme? (19 seconds the limit of video)"
                     self.adapter.bot.sendMessage(chat_id=message.chat_id, text=msg, parse_mode='Markdown')
@@ -397,16 +399,18 @@ class MarvinBotMemePlugin(Plugin):
                 resize = (
                     ffmpeg.input(url)
                         .filter('scale', size = '720:480', force_original_aspect_ratio = 'decrease')
+                        .trim(start = 0, end = to)
                 )
                 overlay = (
                      ffmpeg.input(url)
                         .filter('scale', size = '720:480').filter('setsar','1').filter('boxblur','20')
                         .overlay(resize, x = "(W-w)/2")
+                        .trim(start = 0, end = to)
                 )
                 dance = ffmpeg.input("{}/{}.mp4".format(self.path, name), ss = start)
                 kargs = {"enable":"between(t,0,{})".format(duration)}
                 audio1 = dance.audio.filter('volume', '0.4', **kargs)
-                audio2 = ffmpeg.input(url).audio.filter('volume', '1')
+                audio2 = ffmpeg.input(url).audio.filter('volume', '1').filter('atrim', start = 0, end = to)
                 audio = ffmpeg.filter([audio2, audio1], 'amix')
                 try:
                     video, _ = (
