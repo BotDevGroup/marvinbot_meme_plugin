@@ -412,6 +412,8 @@ class MarvinBotMemePlugin(Plugin):
                 audio1 = dance.audio.filter('volume', '0.4', **kargs)
                 audio2 = ffmpeg.input(url).audio.filter('volume', '1').filter('atrim', start = 0, end = to)
                 audio = ffmpeg.filter([audio2, audio1], 'amix')
+
+                self.adapter.bot.sendChatAction(chat_id=message.chat_id, action = "record_video")
                 try:
                     video, _ = (
                         dance
@@ -426,6 +428,8 @@ class MarvinBotMemePlugin(Plugin):
                             .output(audio1, 'pipe:', movflags = "frag_keyframe+empty_moov", format = 'mp4', acodec='aac')
                             .run(capture_stdout = True, quiet = True)
                         )
+
+                self.adapter.bot.sendChatAction(chat_id=message.chat_id, action = "upload_video")
                 self.adapter.bot.sendVideo(chat_id=message.chat_id, video=BytesIO(video))
             except Exception as err:
                 log.error("Dance - make error: {}".format(err))
