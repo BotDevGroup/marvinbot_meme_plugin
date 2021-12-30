@@ -278,7 +278,7 @@ class MarvinBotMemePlugin(Plugin):
                         img = self.make_meme(image=out, text=text, size=size)
 
                     img.seek(0)
-                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img)
+                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img, timeout=60)
                 except Exception as err:
                     log.error("Meme - make error: {}".format(err))
                     msg += "❌ Meme error: {}".format(err)
@@ -358,7 +358,7 @@ class MarvinBotMemePlugin(Plugin):
                     frame.save(img, format='PNG')
 
                     img.seek(0)
-                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img)
+                    self.adapter.bot.sendPhoto(chat_id=message.chat_id, photo=img, timeout=60)
                 except Exception as err:
                     log.error("Frame - make error: {}".format(err))
                     msg += "❌ Frame error: {}".format(err)
@@ -430,7 +430,7 @@ class MarvinBotMemePlugin(Plugin):
                         )
 
                 self.adapter.bot.sendChatAction(chat_id=message.chat_id, action = "upload_video")
-                self.adapter.bot.sendVideo(chat_id=message.chat_id, video=BytesIO(video))
+                self.adapter.bot.sendVideo(chat_id=message.chat_id, video=BytesIO(video), timeout=60)
             except Exception as err:
                 log.error("Dance - make error: {}".format(err))
                 msg = "❌ Dance error: {}".format(err)
